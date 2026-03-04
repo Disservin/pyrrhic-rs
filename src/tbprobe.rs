@@ -228,7 +228,7 @@ unsafe fn read_le_u16(mut p: *mut libc::c_void) -> u16 {
 static TB_MUTEX: Mutex<()> = Mutex::new(());
 static mut initialized: i32 = 0;
 static mut numPaths: i32 = 0;
-static mut pathString: *mut i8 = 0 as *const i8 as *mut i8;
+static mut pathString: *mut c_char = 0 as *const c_char as *mut c_char;
 static mut paths: *mut *mut c_char = 0 as *const *mut c_char as *mut *mut c_char;
 
 unsafe fn open_tb(
@@ -359,7 +359,7 @@ pub(crate) unsafe fn pyrrhic_pieces_by_type(
     }
 }
 
-pub(crate) fn pyrrhic_char_to_piece_type(c: i8) -> i32 {
+pub(crate) fn pyrrhic_char_to_piece_type(c: c_char) -> i32 {
     let mut i: i32 = PYRRHIC_PAWN as i32;
     while i <= PYRRHIC_KING as i32 {
         if c as i32 == pyrrhic_piece_to_char[i as usize] as i32 {
@@ -1191,7 +1191,11 @@ unsafe fn test_tb(mut str: *const c_char, mut suffix: *const c_char) -> i32 {
         -1
     }
 }
-unsafe fn map_tb(mut name: *const i8, mut suffix: *const i8, mut mapping: *mut u64) -> *mut Mmap {
+unsafe fn map_tb(
+    mut name: *const c_char,
+    mut suffix: *const c_char,
+    mut mapping: *mut u64,
+) -> *mut Mmap {
     let mut file = open_tb(name, suffix);
     if file.is_err() {
         return std::ptr::null_mut();
@@ -1391,10 +1395,10 @@ pub(crate) unsafe fn tb_init(path: &str) -> bool {
     }
     // pathString = malloc((strlen(p)).wrapping_add(1)) as *mut i8;
     // strcpy(pathString, p);
-    pathString = malloc(path.len() as u64 + 1) as *mut i8;
+    pathString = malloc(path.len() as u64 + 1) as *mut c_char;
     let cpath = CString::new(path.as_bytes()).unwrap();
 
-    strcpy(pathString, cpath.as_ptr() as *const i8);
+    strcpy(pathString, cpath.as_ptr() as *const c_char);
     numPaths = 0;
     let mut i_1: i32 = 0;
     loop {
@@ -1412,8 +1416,8 @@ pub(crate) unsafe fn tb_init(path: &str) -> bool {
         *pathString.offset(i_1 as isize) = 0;
         i_1 += 1;
     }
-    paths = malloc((numPaths as u64).wrapping_mul(::core::mem::size_of::<*mut i8>() as u64))
-        as *mut *mut i8;
+    paths = malloc((numPaths as u64).wrapping_mul(::core::mem::size_of::<*mut c_char>() as u64))
+        as *mut *mut c_char;
     let mut i_2: i32 = 0;
     let mut j: i32 = 0;
     while i_2 < numPaths {
@@ -2423,7 +2427,7 @@ unsafe fn setup_pairs(
     (*d).offset = ((*d).offset).offset(-((*d).minLen as i32 as isize));
     d
 }
-unsafe fn init_table(be: *mut BaseEntry, str: *const i8, type_0: i32) -> bool {
+unsafe fn init_table(be: *mut BaseEntry, str: *const c_char, type_0: i32) -> bool {
     let mut mmap = map_tb(
         str,
         tbSuffix[type_0 as usize],
@@ -2749,7 +2753,7 @@ pub(crate) unsafe fn probe_table(
         // will be unlocked at the end of scope
         let lock = TB_MUTEX.lock().unwrap();
         if !(*be).ready[type_0 as usize].load(Ordering::Relaxed) {
-            let mut str: [i8; 16] = [0; 16];
+            let mut str: [c_char; 16] = [0; 16];
             prt_str(pos, str.as_mut_ptr(), ((*be).key != key) as i32);
             if !init_table(be, str.as_mut_ptr(), type_0) {
                 tbHash[hashIdx as usize].ptr = std::ptr::null_mut::<BaseEntry>();
