@@ -1,6 +1,7 @@
 use std::{
     ffi::{CStr, CString},
     fs::{File, OpenOptions},
+    os::raw::c_char,
     sync::{
         atomic::{AtomicBool, Ordering},
         Mutex,
@@ -228,15 +229,18 @@ static TB_MUTEX: Mutex<()> = Mutex::new(());
 static mut initialized: i32 = 0;
 static mut numPaths: i32 = 0;
 static mut pathString: *mut i8 = 0 as *const i8 as *mut i8;
-static mut paths: *mut *mut i8 = 0 as *const *mut i8 as *mut *mut i8;
-// unsafe fn open_tb(mut str: *const i8, mut suffix: *const i8) -> i32 {
-unsafe fn open_tb(mut str: *const i8, mut suffix: *const i8) -> Result<File, std::io::Error> {
+static mut paths: *mut *mut c_char = 0 as *const *mut c_char as *mut *mut c_char;
+
+unsafe fn open_tb(
+    mut str: *const c_char,
+    mut suffix: *const c_char,
+) -> Result<File, std::io::Error> {
     let mut i: i32 = 0;
     i = 0;
     while i < numPaths {
         let path = CStr::from_ptr(*paths.offset(i as isize));
-        let str = CStr::from_ptr(str as *mut i8);
-        let suffix = CStr::from_ptr(suffix as *mut i8);
+        let str = CStr::from_ptr(str);
+        let suffix = CStr::from_ptr(suffix);
         let file = format!(
             "{}/{}{}",
             path.to_str().unwrap(),
@@ -282,10 +286,10 @@ pub(crate) static mut TB_NUM_WDL: i32 = 0;
 pub(crate) static mut TB_NUM_DTM: i32 = 0;
 
 pub(crate) static mut TB_NUM_DTZ: i32 = 0;
-static mut tbSuffix: [*const i8; 3] = [
-    b".rtbw\0" as *const u8 as *const i8,
-    b".rtbm\0" as *const u8 as *const i8,
-    b".rtbz\0" as *const u8 as *const i8,
+static mut tbSuffix: [*const c_char; 3] = [
+    b".rtbw\0" as *const u8 as *const c_char,
+    b".rtbm\0" as *const u8 as *const c_char,
+    b".rtbz\0" as *const u8 as *const c_char,
 ];
 const TB_MAGIC: [u32; 3] = [0x5d23e871, 0x88ac504b, 0xa50c66d7];
 
@@ -1167,7 +1171,7 @@ unsafe fn prt_str(mut pos: *const PyrrhicPosition, mut str: *mut i8, mut flip: i
     str = str.offset(1);
     *fresh9 = 0;
 }
-unsafe fn test_tb(mut str: *const i8, mut suffix: *const i8) -> i32 {
+unsafe fn test_tb(mut str: *const c_char, mut suffix: *const c_char) -> i32 {
     let mut file = open_tb(str, suffix);
     if let Ok(file) = file {
         let size = file.metadata().unwrap().len();
@@ -1207,7 +1211,7 @@ unsafe fn add_to_hash(mut ptr: *mut BaseEntry, mut key: u64) {
     tbHash[idx as usize].key = key;
     tbHash[idx as usize].ptr = ptr;
 }
-unsafe fn init_tb(mut str: *mut i8) {
+unsafe fn init_tb(mut str: *const c_char) {
     if test_tb(str, tbSuffix[WDL as i32 as usize]) == 0 {
         return;
     }
@@ -1218,7 +1222,7 @@ unsafe fn init_tb(mut str: *mut i8) {
         i += 1;
     }
     let mut color: i32 = 0;
-    let mut s: *mut i8 = str;
+    let mut s: *const c_char = str;
     while *s != 0 {
         if *s as i32 == 'v' as i32 {
             color = 8;
@@ -1390,7 +1394,7 @@ pub(crate) unsafe fn tb_init(path: &str) -> bool {
     pathString = malloc(path.len() as u64 + 1) as *mut i8;
     let cpath = CString::new(path.as_bytes()).unwrap();
 
-    strcpy(pathString, cpath.as_ptr());
+    strcpy(pathString, cpath.as_ptr() as *const i8);
     numPaths = 0;
     let mut i_1: i32 = 0;
     loop {
@@ -1455,7 +1459,7 @@ pub(crate) unsafe fn tb_init(path: &str) -> bool {
             pyrrhic_piece_to_char[(PYRRHIC_QUEEN as i32 - i_4) as usize] as u8 as char
         ))
         .unwrap();
-        init_tb(str.as_ptr() as *mut i8);
+        init_tb(str.as_ptr());
         i_4 += 1;
     }
     i_4 = 0;
@@ -1468,7 +1472,7 @@ pub(crate) unsafe fn tb_init(path: &str) -> bool {
                 pyrrhic_piece_to_char[(PYRRHIC_QUEEN as i32 - j_0) as usize] as u8 as char,
             ))
             .unwrap();
-            init_tb(str.as_ptr() as *mut i8);
+            init_tb(str.as_ptr());
             j_0 += 1;
         }
         i_4 += 1;
@@ -1483,7 +1487,7 @@ pub(crate) unsafe fn tb_init(path: &str) -> bool {
                 pyrrhic_piece_to_char[(PYRRHIC_QUEEN as i32 - j_0) as usize] as u8 as char,
             ))
             .unwrap();
-            init_tb(str.as_ptr() as *mut i8);
+            init_tb(str.as_ptr());
             j_0 += 1;
         }
         i_4 += 1;
@@ -1501,7 +1505,7 @@ pub(crate) unsafe fn tb_init(path: &str) -> bool {
                     pyrrhic_piece_to_char[(PYRRHIC_QUEEN as i32 - k) as usize] as u8 as char,
                 ))
                 .unwrap();
-                init_tb(str.as_ptr() as *mut i8);
+                init_tb(str.as_ptr());
                 k += 1;
             }
             j_0 += 1;
@@ -1521,7 +1525,7 @@ pub(crate) unsafe fn tb_init(path: &str) -> bool {
                     pyrrhic_piece_to_char[(PYRRHIC_QUEEN as i32 - k) as usize] as u8 as char,
                 ))
                 .unwrap();
-                init_tb(str.as_ptr() as *mut i8);
+                init_tb(str.as_ptr());
                 k += 1;
             }
             j_0 += 1;
@@ -1549,7 +1553,7 @@ pub(crate) unsafe fn tb_init(path: &str) -> bool {
                                 as char,
                         ))
                         .unwrap();
-                        init_tb(str.as_ptr() as *mut i8);
+                        init_tb(str.as_ptr());
                         l += 1;
                     }
                     k += 1;
@@ -1578,7 +1582,7 @@ pub(crate) unsafe fn tb_init(path: &str) -> bool {
                                 as char,
                         ))
                         .unwrap();
-                        init_tb(str.as_ptr() as *mut i8);
+                        init_tb(str.as_ptr());
                         l += 1;
                     }
                     k += 1;
@@ -1607,7 +1611,7 @@ pub(crate) unsafe fn tb_init(path: &str) -> bool {
                                 as char,
                         ))
                         .unwrap();
-                        init_tb(str.as_ptr() as *mut i8);
+                        init_tb(str.as_ptr());
                         l += 1;
                     }
                     k += 1;
@@ -1640,7 +1644,7 @@ pub(crate) unsafe fn tb_init(path: &str) -> bool {
                                     as char,
                             ))
                             .unwrap();
-                            init_tb(str.as_ptr() as *mut i8);
+                            init_tb(str.as_ptr());
                             m += 1;
                         }
                         l += 1;
@@ -1675,7 +1679,7 @@ pub(crate) unsafe fn tb_init(path: &str) -> bool {
                                     as char,
                             ))
                             .unwrap();
-                            init_tb(str.as_ptr() as *mut i8);
+                            init_tb(str.as_ptr());
                             m += 1;
                         }
                         l += 1;
@@ -1710,7 +1714,7 @@ pub(crate) unsafe fn tb_init(path: &str) -> bool {
                                     as char,
                             ))
                             .unwrap();
-                            init_tb(str.as_ptr() as *mut i8);
+                            init_tb(str.as_ptr());
                             m += 1;
                         }
                         l += 1;
