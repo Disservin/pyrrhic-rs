@@ -20,9 +20,9 @@ extern "C" {
     fn exit(_: i32) -> !;
     fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: u64) -> *mut libc::c_void;
     fn memset(_: *mut libc::c_void, _: i32, _: u64) -> *mut libc::c_void;
-    fn strcpy(_: *mut i8, _: *const i8) -> *mut i8;
-    fn strcmp(_: *const i8, _: *const i8) -> i32;
-    fn strlen(_: *const i8) -> u64;
+    fn strcpy(_: *mut c_char, _: *const c_char) -> *mut c_char;
+    fn strcmp(_: *const c_char, _: *const c_char) -> i32;
+    fn strlen(_: *const c_char) -> u64;
 }
 
 pub(crate) const PYRRHIC_PRIME_BPAWN: u64 = 11695583624105689831;
@@ -1136,7 +1136,7 @@ pub(crate) unsafe fn tb_probe_root_wdl<E: EngineAdapter>(
     };
     root_probe_wdl::<E>(&pos, useRule50, results)
 }
-unsafe fn prt_str(mut pos: *const PyrrhicPosition, mut str: *mut i8, mut flip: i32) {
+unsafe fn prt_str(mut pos: *const PyrrhicPosition, mut str: *mut c_char, mut flip: i32) {
     let mut color: i32 = if flip != 0 {
         PYRRHIC_BLACK as i32
     } else {
@@ -1381,7 +1381,7 @@ pub(crate) unsafe fn tb_init(path: &str) -> bool {
             free_tb_entry(&mut *pawnEntry.offset(i_0 as isize) as *mut PawnEntry as *mut BaseEntry);
             i_0 += 1;
         }
-        pathString = std::ptr::null_mut::<i8>();
+        pathString = std::ptr::null_mut::<c_char>();
         numDtz = 0;
         numDtm = numDtz;
         numWdl = numDtm;
@@ -1398,7 +1398,7 @@ pub(crate) unsafe fn tb_init(path: &str) -> bool {
     pathString = malloc(path.len() as u64 + 1) as *mut c_char;
     let cpath = CString::new(path.as_bytes()).unwrap();
 
-    strcpy(pathString, cpath.as_ptr() as *const c_char);
+    strcpy(pathString, cpath.as_ptr());
     numPaths = 0;
     let mut i_1: i32 = 0;
     loop {
