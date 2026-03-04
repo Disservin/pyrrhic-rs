@@ -333,8 +333,8 @@ pub(crate) fn pyrrhic_pawn_start_square(colour: i32, sq: i32) -> bool {
     sq >> 3 == (if colour != 0 { 1 } else { 6 })
 }
 
-pub(crate) static pyrrhic_piece_to_char: [i8; 16] =
-    unsafe { *::core::mem::transmute::<&[u8; 16], &[i8; 16]>(b" PNBRQK  pnbrqk\0") };
+pub(crate) static pyrrhic_piece_to_char: [c_char; 16] =
+    unsafe { *::core::mem::transmute::<&[u8; 16], &[c_char; 16]>(b" PNBRQK  pnbrqk\0") };
 
 pub(crate) unsafe fn pyrrhic_pieces_by_type(
     pos: *const PyrrhicPosition,
@@ -1155,7 +1155,7 @@ unsafe fn prt_str(mut pos: *const PyrrhicPosition, mut str: *mut c_char, mut fli
     }
     let fresh7 = str;
     str = str.offset(1);
-    *fresh7 = 'v' as i32 as i8;
+    *fresh7 = 'v' as i32 as c_char;
     let mut pt_0: i32 = PYRRHIC_KING as i32;
     while pt_0 >= PYRRHIC_PAWN as i32 {
         let mut i_0: i32 = popcount(pyrrhic_pieces_by_type(pos, color ^ 1, pt_0)) as i32;
